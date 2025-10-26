@@ -14,7 +14,7 @@ type Processor struct {
 	opList []string
 }
 
-func (p *Processor) handel(f []string) {
+func (p *Processor) handle(f []string) {
 
 	for i := 0; i < len(f); i++ {
 		sig := string(f[i])

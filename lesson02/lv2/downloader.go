@@ -7,9 +7,8 @@ import (
 )
 
 type Downloader struct {
-	FileName string
-	wg       *sync.WaitGroup
-	result   chan string
+	wg     *sync.WaitGroup
+	result chan string
 }
 
 func initDownloader(wg *sync.WaitGroup, res chan string) *Downloader {
@@ -26,9 +25,9 @@ func (d *Downloader) download(fileName string) {
 }
 
 func (d *Downloader) startDownloaders(fileList []string) {
-	for _, fileMame := range fileList {
+	for _, fileName := range fileList {
 		d.wg.Add(1)
-		go d.download(fileMame)
+		go d.download(fileName)
 	}
 
 	go func() {

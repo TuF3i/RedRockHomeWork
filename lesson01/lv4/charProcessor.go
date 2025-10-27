@@ -2,6 +2,18 @@ package main
 
 import "unicode"
 
+func safetyCheck(input string) bool {
+	for i := 0; i < len(input)-1; i++ {
+		item := string(input[i])
+		itemPost := string(input[i+1])
+
+		if item == "/" && itemPost == "0" {
+			return false
+		}
+	}
+	return true
+}
+
 func charProcesser(input string) []string {
 	var res []string
 	var current string

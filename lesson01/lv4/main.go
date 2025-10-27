@@ -5,11 +5,17 @@ import "fmt"
 func main() {
 	var userInput string
 	fmt.Printf("(Please enter your expr)> ")
-	fmt.Scanf("%v", &userInput)
+	fmt.Scanln(&userInput)
+
+	if !safetyCheck(userInput) {
+		fmt.Println("Division by zero")
+		return
+	}
+
 	s := charProcesser(userInput)
 
 	p := initProcessor()
-	p.handel(s)
+	p.handle(s)
 
 	c := initCaculator(p.s2.data)
 	c.runCal()

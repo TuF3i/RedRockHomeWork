@@ -2,105 +2,79 @@ package main
 
 import (
 	"fmt"
+	"strconv"
+	"strings"
 )
 
-var num1 float64
-var operation string
-var num2 float64
-var mode int
+func Contain(userInput string) string {
+	for i := 0; i < len(userInput); i++ {
+		c := string(userInput[i])
+		//fmt.Printf("%v\n", c)
+		switch c {
+		case "+":
 
-func calculatorSwitch() (float64, error) {
-	switch operation {
-	case "+":
+			return "+"
+		case "-":
 
-		return num2 + num1, nil
+			return "-"
+		case "*":
 
-	case "-":
+			return "*"
+		case "/":
 
-		return num1 - num2, nil
+			return "/"
+		default:
 
-	case "*":
-
-		return num1 * num2, nil
-
-	case "/":
-
-		return num1 / num2, nil
-
-	default:
-
-		return 0, fmt.Errorf("你输了什么，害怕")
+			continue
+		}
 	}
-}
-
-func calculatorIf() (float64, error) {
-	if operation == "+" {
-		return num1 + num2, nil
-	}
-
-	if operation == "-" {
-		return num1 - num2, nil
-	}
-
-	if operation == "*" {
-		return num1 * num2, nil
-	}
-
-	if operation == "/" {
-		return num1 / num2, nil
-	}
-
-	return 0, fmt.Errorf("你输了什么，害怕")
+	return "OP Err"
 }
 
 func main() {
-	fmt.Printf("选择一个运行模式(0:if 1:switch): ")
-	_, err := fmt.Scanf("%v", &mode)
-	if err != nil {
-		fmt.Printf("你输了什么，害怕")
+	var userInput string
+	var num1 float64
+	var num2 float64
+	var op string
+
+	fmt.Printf("Please Input Your expr>")
+	fmt.Scanln(&userInput)
+	//fmt.Printf(userInput)
+	op = Contain(userInput)
+
+	if op == "OP Err" {
+		fmt.Printf("OP Error\n")
 		return
 	}
 
-	fmt.Printf("请输入第一个数: ")
-	_, err = fmt.Scanf("%v", &num1)
+	//fmt.Printf("%v\n", op)
+	res := strings.Split(userInput, op)
+	//fmt.Println(res)
+
+	num1, err := strconv.ParseFloat(res[0], 64)
 	if err != nil {
-		fmt.Printf("你输了什么，害怕")
-		return
+		fmt.Printf("Convert Num1 Fail!")
 	}
 
-	fmt.Printf("请输入操作符: ")
-	_, err = fmt.Scanf("%v", &operation)
+	num2, err = strconv.ParseFloat(res[1], 64)
 	if err != nil {
-		fmt.Printf("你输了什么，害怕")
-		return
+		fmt.Printf("Convert Num2 Fail!")
 	}
 
-	fmt.Printf("请输入第二个数: ")
-	_, err = fmt.Scanf("%v", &num2)
-	if err != nil {
-		fmt.Printf("你输了什么，害怕")
-		return
-	}
-
-	if mode == 0 {
-		res, err := calculatorIf()
-		if err != nil {
-			fmt.Printf("你输了什么，害怕")
+	switch op {
+	case "+":
+		fmt.Printf("%f + %f = %.2f", num1, num2, num1+num2)
+	case "-":
+		fmt.Printf("%f - %f = %.2f", num1, num2, num1-num2)
+	case "*":
+		fmt.Printf("%f * %f = %.2f", num1, num2, num1*num2)
+	case "/":
+		if num2 == 0 {
+			fmt.Printf("Runtime Error: (%v / 0)\n", num1)
 			return
 		}
-		fmt.Printf("结果是: %f", res)
-		return
+		fmt.Printf("%f / %f = %.2f", num1, num2, num1/num2)
+	default:
+		fmt.Printf("Operation Error!")
 	}
-
-	if mode == 1 {
-		res, err := calculatorSwitch()
-		if err != nil {
-			fmt.Printf("你输了什么，害怕")
-			return
-		}
-		fmt.Printf("结果是: %f", res)
-		return
-	}
-
-	fmt.Printf("你输了什么，害怕")
 }

@@ -2,6 +2,7 @@ package runc
 
 import (
 	"lesson04/core"
+	"lesson04/core/dao/mySQL/engine"
 	llog "lesson04/core/utils/LocalLog"
 	"lesson04/core/utils/config"
 	"log"
@@ -63,4 +64,16 @@ func (root *Runc) InitConfig(path string) {
 	c.Printf("\tMySQLPassword: %v\n", core.Conf.MySQLPassword)
 	c.Printf("\tMySQLDBName: %v\n", core.Conf.MySQLDBName)
 
+}
+
+func (root *Runc) InitMySQL() {
+	root.l.Debug("Started to load mod<MySQL>")
+	if err := engine.Init().InitMySQL(); err != nil {
+		root.l.Warn("Load mod<MySQL> Error: %v", err.Error())
+	}
+	root.l.Info("Finished loading mod<MySQl>")
+	color.New(color.FgCyan, color.Bold).Printf("\tGet MySQL Connection")
+	color.New(color.FgGreen).Printf(" %v:%v ", core.Conf.MySQLAddress, core.Conf.MySQLPort)
+	color.New(color.FgCyan, color.Bold).Printf("at position ")
+	color.New(color.FgYellow).Add(color.Underline).Println(core.DB)
 }

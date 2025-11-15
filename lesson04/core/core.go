@@ -21,7 +21,6 @@ var (
 )
 
 var (
-	StatusOK    int = 200
-	ServerError int = 501
-	NotFound    int = 404
+	UrlLogin    = "/v1/manager/user/login"
+	UrlRegister = "/v1/manager/user/register"
 )

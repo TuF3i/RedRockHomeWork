@@ -2,6 +2,7 @@ package services
 
 import (
 	"fmt"
+	"lesson04/core"
 	"lesson04/core/dao/mySQL/handleFunc"
 	"lesson04/core/dao/mySQL/models"
 	"lesson04/core/services/dataForm"
@@ -15,8 +16,10 @@ import (
 func (root *Service) StudentRegister() {
 	var stuDataForm dataForm.RegisterStudentsForm
 	mySQLHandle := handleFunc.Init()
+	sourceIP := root.c.ClientIP()
 
 	if err := root.c.BindAndValidate(&stuDataForm); err != nil {
+		core.Logger.BotWarning(fmt.Sprintf("%v - %v", sourceIP, err.Error()))
 		root.c.JSON(consts.StatusBadRequest, dataForm.RegisterStudentsReply{
 			Action:  stuDataForm.Action,
 			Status:  "Failed",
@@ -25,7 +28,8 @@ func (root *Service) StudentRegister() {
 		return
 	}
 
-	if !mySQLHandle.CheckStudentExists(stuDataForm.Data.StudentID) {
+	if mySQLHandle.CheckStudentExists(stuDataForm.Data.StudentID) {
+		core.Logger.BotDEBUG(fmt.Sprintf("%v - %v", sourceIP, "Student already exists!"))
 		root.c.JSON(consts.StatusConflict, dataForm.RegisterStudentsReply{
 			Action:  stuDataForm.Action,
 			Status:  "Illegal",
@@ -35,6 +39,7 @@ func (root *Service) StudentRegister() {
 	}
 
 	if err := mySQLHandle.AddStudent(stuDataForm.Data); err != nil {
+		core.Logger.BotWarning(fmt.Sprintf("%v - %v", sourceIP, err.Error()))
 		root.c.JSON(consts.StatusInternalServerError, dataForm.RegisterStudentsReply{
 			Action:  stuDataForm.Action,
 			Status:  "Failed",
@@ -43,6 +48,7 @@ func (root *Service) StudentRegister() {
 		return
 	}
 
+	core.Logger.BotINFO(fmt.Sprintf("%v - %v", sourceIP, stuDataForm.Action+" Success"))
 	root.c.JSON(consts.StatusOK, dataForm.RegisterStudentsReply{
 		Action:  stuDataForm.Action,
 		Status:  "Success",
@@ -58,8 +64,10 @@ func (root *Service) StudentRegister() {
 func (root *Service) StudentLogin() {
 	var revDataForm dataForm.LoginStudentsForm
 	mySQLHandle := handleFunc.Init()
+	sourceIP := root.c.ClientIP()
 
 	if err := root.c.BindAndValidate(&revDataForm); err != nil {
+		core.Logger.BotWarning(fmt.Sprintf("%v - %v", sourceIP, err.Error()))
 		root.c.JSON(consts.StatusBadRequest, dataForm.LoginStudentsReply{
 			Action:  revDataForm.Action,
 			Status:  "Failed",
@@ -70,6 +78,7 @@ func (root *Service) StudentLogin() {
 	}
 
 	if mySQLHandle.CheckStudentExists(revDataForm.StudentID) {
+		core.Logger.BotDEBUG(fmt.Sprintf("%v - %v", sourceIP, "Student not exists!"))
 		root.c.JSON(consts.StatusConflict, dataForm.LoginStudentsReply{
 			Action:  revDataForm.Action,
 			Status:  "Illegal",
@@ -82,6 +91,7 @@ func (root *Service) StudentLogin() {
 	data, err := mySQLHandle.GetStudentInfo(revDataForm.StudentID)
 
 	if err != nil {
+		core.Logger.BotWarning(fmt.Sprintf("%v - %v", sourceIP, err.Error()))
 		root.c.JSON(consts.StatusInternalServerError, dataForm.LoginStudentsReply{
 			Action:  revDataForm.Action,
 			Status:  "Failed",
@@ -92,9 +102,10 @@ func (root *Service) StudentLogin() {
 	}
 
 	if data.StudentPasswd != md5.GenMD5(revDataForm.Password) {
+		core.Logger.BotDEBUG(fmt.Sprintf("%v - %v", sourceIP, "Wrong Password!"))
 		root.c.JSON(consts.StatusUnauthorized, dataForm.LoginStudentsReply{
 			Action:  revDataForm.Action,
-			Status:  "Failed",
+			Status:  "illegal",
 			Message: "密码错误",
 			Token:   "",
 		})
@@ -103,6 +114,7 @@ func (root *Service) StudentLogin() {
 
 	jwtGen, err := jwt.InitJWT()
 	if err != nil {
+		core.Logger.BotWarning(fmt.Sprintf("%v - %v", sourceIP, err.Error()))
 		root.c.JSON(consts.StatusInternalServerError, dataForm.LoginStudentsReply{
 			Action:  revDataForm.Action,
 			Status:  "Failed",
@@ -114,6 +126,7 @@ func (root *Service) StudentLogin() {
 
 	token, err := jwtGen.GenJWT(data.StudentID)
 	if err != nil {
+		core.Logger.BotWarning(fmt.Sprintf("%v - %v", sourceIP, err.Error()))
 		root.c.JSON(consts.StatusInternalServerError, dataForm.LoginStudentsReply{
 			Action:  revDataForm.Action,
 			Status:  "Failed",
@@ -123,6 +136,7 @@ func (root *Service) StudentLogin() {
 		return
 	}
 
+	core.Logger.BotINFO(fmt.Sprintf("%v - %v", sourceIP, revDataForm.Action+" Success"))
 	root.c.JSON(consts.StatusOK, dataForm.LoginStudentsReply{
 		Action:  revDataForm.Action,
 		Status:  "Success",
@@ -135,8 +149,10 @@ func (root *Service) StudentLogin() {
 func (root *Service) StudentDel() {
 	mySQLHandle := handleFunc.Init()
 	jwtChecker, err := jwt.InitJWT()
+	sourceIP := root.c.ClientIP()
 
 	if err != nil {
+		core.Logger.BotWarning(fmt.Sprintf("%v - %v", sourceIP, err.Error()))
 		root.c.JSON(consts.StatusInternalServerError, dataForm.DelStudentsReply{
 			Action:  "DELETE STUDENT",
 			Status:  "Failed",
@@ -150,6 +166,7 @@ func (root *Service) StudentDel() {
 
 	studentID, ok := jwtChecker.RecoverData(token)
 	if !ok {
+		core.Logger.BotWarning(fmt.Sprintf("%v - %v", sourceIP, "Decode JWT Error"))
 		root.c.JSON(consts.StatusInternalServerError, dataForm.DelStudentsReply{
 			Action:  "DELETE STUDENT",
 			Status:  "Failed",
@@ -158,7 +175,18 @@ func (root *Service) StudentDel() {
 		return
 	}
 
+	if !mySQLHandle.CheckStudentExists(studentID) {
+		core.Logger.BotDEBUG(fmt.Sprintf("%v - %v", sourceIP, "Student not exists!"))
+		root.c.JSON(consts.StatusConflict, dataForm.DelStudentsReply{
+			Action:  "DELETE STUDENT",
+			Status:  "Illegal",
+			Message: "学生不存在",
+		})
+		return
+	}
+
 	if err := mySQLHandle.DeleteStudent(studentID); err != nil {
+		core.Logger.BotWarning(fmt.Sprintf("%v - %v", sourceIP, err.Error()))
 		root.c.JSON(consts.StatusInternalServerError, dataForm.DelStudentsReply{
 			Action:  "DELETE STUDENT",
 			Status:  "Failed",
@@ -167,6 +195,7 @@ func (root *Service) StudentDel() {
 		return
 	}
 
+	core.Logger.BotINFO(fmt.Sprintf("%v - %v", sourceIP, "DELETE STUDENT Success"))
 	root.c.JSON(consts.StatusOK, dataForm.DelStudentsReply{
 		Action:  "DELETE STUDENT",
 		Status:  "Success",
@@ -179,11 +208,13 @@ func (root *Service) StudentDel() {
 func (root *Service) StudentInfo() {
 	mySQLHandle := handleFunc.Init()
 	jwtChecker, err := jwt.InitJWT()
+	sourceIP := root.c.ClientIP()
 	var student models.StudentsTable
 
 	if err != nil {
+		core.Logger.BotWarning(fmt.Sprintf("%v - %v", sourceIP, err.Error()))
 		root.c.JSON(consts.StatusInternalServerError, dataForm.StudentsInfoReply{
-			Action:  "GET STUINFO",
+			Action:  "GET STU INFO",
 			Status:  "Failed",
 			Message: fmt.Sprintf("服务器内部错误：%v", err.Error()),
 			Info:    student,
@@ -196,8 +227,9 @@ func (root *Service) StudentInfo() {
 
 	studentID, ok := jwtChecker.RecoverData(token)
 	if !ok {
+		core.Logger.BotWarning(fmt.Sprintf("%v - %v", sourceIP, "Decode JWT Error"))
 		root.c.JSON(consts.StatusInternalServerError, dataForm.StudentsInfoReply{
-			Action:  "GET STUINFO",
+			Action:  "GET STU INFO",
 			Status:  "Failed",
 			Message: fmt.Sprintf("服务器内部错误：%v", "Decode JWT Error"),
 			Info:    student,
@@ -207,8 +239,9 @@ func (root *Service) StudentInfo() {
 
 	student, err = mySQLHandle.GetStudentInfo(studentID)
 	if err != nil {
+		core.Logger.BotWarning(fmt.Sprintf("%v - %v", sourceIP, err.Error()))
 		root.c.JSON(consts.StatusInternalServerError, dataForm.StudentsInfoReply{
-			Action:  "GET STUINFO",
+			Action:  "GET STU INFO",
 			Status:  "Failed",
 			Message: fmt.Sprintf("服务器内部错误：%v", err.Error()),
 			Info:    student,
@@ -216,8 +249,9 @@ func (root *Service) StudentInfo() {
 		return
 	}
 
+	core.Logger.BotINFO(fmt.Sprintf("%v - %v", sourceIP, "GET STU INFO Success"))
 	root.c.JSON(consts.StatusOK, dataForm.StudentsInfoReply{
-		Action:  "GET STUINFO",
+		Action:  "GET STU INFO",
 		Status:  "Success",
 		Message: "操作成功",
 		Info:    student,
@@ -230,8 +264,10 @@ func (root *Service) StudentUpdate() {
 	var updateDataForm dataForm.StudentsUpdateForm
 	mySQLHandle := handleFunc.Init()
 	jwtChecker, err := jwt.InitJWT()
+	sourceIP := root.c.ClientIP()
 
 	if err != nil {
+		core.Logger.BotWarning(fmt.Sprintf("%v - %v", sourceIP, err.Error()))
 		root.c.JSON(consts.StatusInternalServerError, dataForm.StudentsUpdateReply{
 			Action:  updateDataForm.Action,
 			Status:  "Failed",
@@ -241,6 +277,7 @@ func (root *Service) StudentUpdate() {
 	}
 
 	if err := root.c.BindAndValidate(&updateDataForm); err != nil {
+		core.Logger.BotWarning(fmt.Sprintf("%v - %v", sourceIP, err.Error()))
 		root.c.JSON(consts.StatusBadRequest, dataForm.StudentsUpdateReply{
 			Action:  updateDataForm.Action,
 			Status:  "Failed",
@@ -254,8 +291,9 @@ func (root *Service) StudentUpdate() {
 
 	studentID, ok := jwtChecker.RecoverData(token)
 	if !ok {
+		core.Logger.BotWarning(fmt.Sprintf("%v - %v", sourceIP, "Decode JWT Error"))
 		root.c.JSON(consts.StatusInternalServerError, dataForm.StudentsUpdateReply{
-			Action:  "GET STUINFO",
+			Action:  updateDataForm.Action,
 			Status:  "Failed",
 			Message: fmt.Sprintf("服务器内部错误：%v", "Decode JWT Error"),
 		})
@@ -271,16 +309,18 @@ func (root *Service) StudentUpdate() {
 	}
 
 	if err := mySQLHandle.UpdateStudent(data); err != nil {
+		core.Logger.BotWarning(fmt.Sprintf("%v - %v", sourceIP, err.Error()))
 		root.c.JSON(consts.StatusInternalServerError, dataForm.StudentsUpdateReply{
-			Action:  "GET STUINFO",
+			Action:  updateDataForm.Action,
 			Status:  "Failed",
 			Message: fmt.Sprintf("服务器内部错误：%v", err.Error()),
 		})
 		return
 	}
 
+	core.Logger.BotINFO(fmt.Sprintf("%v - %v", sourceIP, updateDataForm.Action+" Success"))
 	root.c.JSON(consts.StatusInternalServerError, dataForm.StudentsUpdateReply{
-		Action:  "GET STUINFO",
+		Action:  updateDataForm.Action,
 		Status:  "Success",
 		Message: "操作成功",
 	})

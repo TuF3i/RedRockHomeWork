@@ -2,6 +2,7 @@ package handleFunc
 
 import (
 	"errors"
+	"fmt"
 	"lesson04/core"
 	"lesson04/core/dao/mySQL/models"
 	"lesson04/core/utils/md5"
@@ -131,7 +132,18 @@ func (root *MySQLHandle) SelectClassForStu(stuID string, classID string) error {
 		return err
 	}
 
+	if class.SelectedNum == class.SelectableNum {
+		tx.Rollback()
+		return fmt.Errorf("Reached the max SelectableNum")
+	}
+
 	if err := tx.Model(&student).Association("Classes").Append(&class); err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	err := tx.Model(&models.SelectableClasses{}).Where("class_id = ?", classID).Update("selected_num", class.SelectableNum+1).Error
+	if err != nil {
 		tx.Rollback()
 		return err
 	}
